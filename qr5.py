@@ -1,9 +1,12 @@
+
 #QR
 # a qr encodeing engine for large files
 #Designed By Duncan Andrews
 
 #Libraries
 try:
+
+	import time
 
 	import subprocess
 
@@ -24,11 +27,19 @@ try:
 	import numpy as np
 
 	from os.path import isfile, join
+
+	from moviepy.editor import VideoFileClip, concatenate_videoclips
+
 except:
 	print("you seem to be missing some libraries")
 
 #GLOBAL VARIBLES
+#these are used for the steps function
 
+#50 is the default amount of images to process at once into a video clip
+x = 10
+b = 0
+path = 0
 
 
 #Pause Function
@@ -119,7 +130,7 @@ def QRmake():
     			border=4,
 		)
 	#make  the  amount of data to be encoded
-		a = counter + 2000
+		a = counter + 1500
 		if a > fileChar:
 			a = fileChar
                 load = a / fileChar
@@ -127,14 +138,14 @@ def QRmake():
                 print("Percent Done: " + str(load))
 		print("Characters Processed: " + str(a) + " of " + str(fileChar))
 		a = a * -1
-
+	#print the text being encoded to the screen
 		payload = fileContents[counter:-a]
 		print("Payload: ")
                 print(payload)
 		qr.add_data(payload)
 		qr.make(fit=True)
 
-
+	#Create the file  and save it
 		realname= str(nameCount) + ".png"
 		location = directoryName + "/" + realname
 		img = qr.make_image(fill_color="black", back_color="white")
@@ -142,7 +153,7 @@ def QRmake():
 
 
 	#adjust variables
-		counter += 2000
+		counter += 1500
 		name += 1
 		nameCount +=1
 
@@ -185,12 +196,14 @@ def QRread():
 
 def QRassemble():
 	Banner()
-
+	print("----------Working Directory Files ")
+        #list files in working directory
+        print("Files: ")
 	#make new file todump data
 	f= open("HEXassemble.txt", "a")
 	listOfFiles = os.listdir('.')
         pattern = "*.png"
-	count = 1
+	count = 0
         for entry in listOfFiles:
                 if fnmatch.fnmatch(entry, pattern):
 			print(entry)
@@ -200,13 +213,19 @@ def QRassemble():
 	#make cache to prevent duplicates qr
 	cache= ""
 	duplicate = 0
-        i = 1
+        i = 0
 	while i < count:
         	qr = qrtools.QR()
-		print(i)
-		file = "image" + str(i)
-        	qr.decode(file + ".png")
-		#check cache
+		print("Decoding: " + str(i) + " of " + str(count))
+#		file = "image" + str(i)
+                file = str(i)
+
+	       	try:
+			qr.decode(file + ".png")
+		except:
+			print("read error trying again")
+			qr.decode(file + ".png")
+		#check cache for duplicate 
 		if cache != qr.data:
 			f.write(qr.data)
 			print(file)
@@ -216,18 +235,58 @@ def QRassemble():
 			duplicate += 1
 		i += 1
 		cache = qr.data
+		time.sleep(.05)
 	print(str(duplicate) + " Duplicates found.")
 	f.close()
         Pause()
         return
 
+#function for iterating through list/array
+def steps(files,y,frame_array,pathIn):
+	global path
+	#file file of file names
+	list= open("VideoNames.txt","a")
+	pathOut= str(path) + ".avi"
+	listName = pathOut
+	pathOut = "./"  + pathOut
+	list.write("file " + listName + "\n")
+	list.close
+	for n in y:
+		filename=pathIn + files[n]
+		fps= 2.0
+                #reading each files
+	        print(filename)
+	        img = cv2.imread(filename)
+	        height, width, layers = img.shape
+	        size = (width,height)
+		frame_array.append(img)
+                out = cv2.VideoWriter(pathOut,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+
+	#for i in range(len(frame_array)):
+            # writing to a image array
+        for n in y:
+	   out.write(frame_array[n])
+        out.release()
+        print(pathOut+" made!")
+	#empty array
+	for n in y:
+		frame_array[n] = 0 
+        print("break")
+	#time.sleep(10)
+        global x
+        x += 10
+        if x > len(files):
+                x = len(files)
+        global b
+        b += 10
+	path +=1
+        return
+#MAkes the video bank to be combined
 def MMcreate():
 	Banner()
 	path = raw_input("Enter Folder of QR images to compile: ")
 	path = "./" + path + "/"
 	pathIn= path
-	pathOut = 'video.avi'
-	fps = 2.0
 	frame_array = []
 	files = [f for f in os.listdir(pathIn) if isfile(join(pathIn, f))]
 	#for sorting the file names properly
@@ -237,34 +296,63 @@ def MMcreate():
 	files = [f for f in os.listdir(pathIn) if isfile(join(pathIn, f))]
 	#for sorting the file names properly
 	files.sort(key = lambda x: int(filter(str.isdigit, x)))
-	for i in range(len(files)):
-	        filename=pathIn + files[i]
-	        #reading each files
-		print(filename)
-	        img = cv2.imread(filename)
-	        height, width, layers = img.shape
-	        size = (width,height)
 
-    #inserting the frames into an image array
-	        frame_array.append(img)
-	        out = cv2.VideoWriter(pathOut,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
-	Pause()
-	for i in range(len(frame_array)):
-	    # writing to a image array
-	    out.write(frame_array[i])
-	out.release()
-	print("video.avi made!")
+
+
+
+#	for i in range(len(files)):
+#	        filename=pathIn + files[i]
+#	        #reading each files
+#		print(filename)
+#	        img = cv2.imread(filename)
+#	        height, width, layers = img.shape
+#	        size = (width,height)
+#
+ #   #inserting the frames into an image array
+#	        frame_array.append(img)
+#	        out = cv2.VideoWriter(pathOut,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+#	Pause()
+
+
+	global b
+	global x
+
+	while b < len(files):
+		#print("MM make")
+		#time.sleep(10)
+		y= range(b,x)
+		steps(files,y,frame_array,pathIn)
+#	for i in range(len(frame_array)):
+#	    # writing to a image array
+#	    out.write(frame_array[i])
+#	out.release()
+#	print("video.avi made!")
 	Pause()
 	return
+
+#Conacate all video clips in a certain folder
+def Con():
+ 
+	os.system("ffmpeg -f concat -i VideoNames.txt -codec copy output.avi")
+	Pause()
+	return
+
 
 def MMbreak():
 	Banner()
 	#liost files
+	print("----------Working Directory Files ")
+        #list files in working directory
+        print("Files: ")
 	listOfFiles = os.listdir('.')
         pattern = "*.avi"
+	pattern2 = "*.mp4"
         count = 0
         for entry in listOfFiles:
                 if fnmatch.fnmatch(entry, pattern):
+                        print(entry)
+                        count +=1
+		if fnmatch.fnmatch(entry, pattern2):
                         print(entry)
                         count +=1
 	file = raw_input("Enter File name: ")
@@ -273,7 +361,7 @@ def MMbreak():
 	    vidcap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
 	    hasFrames,image = vidcap.read()
 	    if hasFrames:
-	        cv2.imwrite("image"+str(count)+".png", image)     # save frame as JPG file
+	        cv2.imwrite(str(count)+".png", image)     # save frame as JPG file
 	    return hasFrames
 	sec = 0
 	frameRate = 0.5 #//it will capture image in each 0.5 second
@@ -292,16 +380,24 @@ def MMbreak():
 ########################################################3
 #Home Menu
 def Home():
+	#reset globals
+	global x
+	global b
+	global path
+	x = 10
+	b = 0
+	path = 0
 	#List Options
 	Banner()
-	print("1. Open File in Hex")
-        print("2. MAke qr")
-	print("3. Read QR")
-	print("4. Reassemble bank")
-	print("5. Create video")
-	print("6. Deconstruct video")
-        print("7. Quit")
-        choice = raw_input("ENter CHoice: ")
+	print("1. Convert file to Hex")
+        print("2. Fragment and encode Hex file to bank of QR images")
+	print("3. Read indvidual QR image")
+	print("4. Reassemble bank of QR images")
+	print("5. Assemble video bank from QR bank  ")
+	print("6. Assemble full video from video bank")
+	print("7. Deconstruct video into QR bank")
+        print("8. Quit")
+        choice = raw_input("Enter Choice: ")
         if choice:
                 if choice == '1':
                         Hex()
@@ -314,9 +410,11 @@ def Home():
                         QRassemble()
 		if choice == '5':
                         MMcreate()
-                if choice == '6':
-                        MMbreak()
+		if choice == '6':
+			Con()
                 if choice == '7':
+                        MMbreak()
+                if choice == '8':
 			Banner()
                         quit()
 	else:
