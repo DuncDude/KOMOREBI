@@ -30,6 +30,13 @@ try:
 
 	from moviepy.editor import VideoFileClip, concatenate_videoclips
 
+	from decimal import Decimal as D
+
+	from pathlib import Path
+
+        from zipfile import ZipFile
+
+
 except:
 	print("you seem to be missing some libraries")
 
@@ -55,8 +62,26 @@ def Banner():
 	print("__________________________________")
 	#return to function that called
 	return
-
-
+  
+  
+#compress whatever file(s) you want to
+def Zip():
+        Banner()
+        print("----------Working Directory Files ")
+        #list files in working directory
+        print("Files: ")
+        listOfFiles = os.listdir('.')
+        pattern = "*"
+        for entry in listOfFiles:
+                if fnmatch.fnmatch(entry, pattern):
+                        print(entry)
+                
+                
+        fileName = raw_input("Enter file to compress: ")
+        zf = ZipFile('my_python_files.zip','w')
+        zf.write(fileName)
+        Pause()
+        return
 
 def Hex():
 	Banner()
@@ -70,6 +95,8 @@ def Hex():
 			print(entry)
 	#Read  file into HEX
 	filename = raw_input("Enter file name: ")
+	if filename == "":
+                return
 	#remove file extension
 	filenameraw = filename[:-4]
 	with open(filename, 'rb') as f:
@@ -101,7 +128,11 @@ def QRmake():
 
 #Prompt for file name and directtory name
 	filename= raw_input("Enter File Name: ")
+	if filename == "":
+                return
 	directoryName= raw_input("Enter Directory name to create: ")
+	if directoryName == "":
+                return
 #make a directory to put the image files into
 	os.mkdir(directoryName)
 #open file and measure length
@@ -133,7 +164,8 @@ def QRmake():
 		a = counter + 1500
 		if a > fileChar:
 			a = fileChar
-                load = a / fileChar
+	#calculate the percentage done
+                load = (D(a) / (fileChar))
 		load = load * 100
                 print("Percent Done: " + str(load))
 		print("Characters Processed: " + str(a) + " of " + str(fileChar))
@@ -146,7 +178,7 @@ def QRmake():
 		qr.make(fit=True)
 
 	#Create the file  and save it
-		realname= str(nameCount) + ".png"
+		realname= str(nameCount) + ".tiff"
 		location = directoryName + "/" + realname
 		img = qr.make_image(fill_color="black", back_color="white")
 		img.save(location)
@@ -182,7 +214,7 @@ def QRread():
         #list files in working directory
         print("Files: ")
         listOfFiles = os.listdir('.')
-        pattern = "*.png"
+        pattern = "*.tiff"
         for entry in listOfFiles:
                 if fnmatch.fnmatch(entry, pattern):
                         print(entry)
@@ -196,13 +228,16 @@ def QRread():
 
 def QRassemble():
 	Banner()
+	#Flag for enabling duplicate data checkand removal
+	dupFlag = ""
+	dupFlag = raw_input("Would you like to enable duplcate value checks? \n Enabling this checks to see if data read has already been \n read in the previous frame y/n: ")
 	print("----------Working Directory Files ")
         #list files in working directory
         print("Files: ")
 	#make new file todump data
 	f= open("HEXassemble.txt", "a")
 	listOfFiles = os.listdir('.')
-        pattern = "*.png"
+        pattern = "*.tiff"
 	count = 0
         for entry in listOfFiles:
                 if fnmatch.fnmatch(entry, pattern):
@@ -215,16 +250,23 @@ def QRassemble():
 	duplicate = 0
         i = 0
 	while i < count:
+
+		#show amount done
+		load = (D(i) / (count))
+                load = load * 100
+                print("Percent Done: " + str(load))
+
+
         	qr = qrtools.QR()
 		print("Decoding: " + str(i) + " of " + str(count))
 #		file = "image" + str(i)
                 file = str(i)
 
 	       	try:
-			qr.decode(file + ".png")
+			qr.decode(file + ".tiff")
 		except:
 			print("read error trying again")
-			qr.decode(file + ".png")
+			qr.decode(file + ".tiff")
 		#check cache for duplicate 
 		if cache != qr.data:
 			f.write(qr.data)
@@ -234,8 +276,10 @@ def QRassemble():
 			print("Duplicate Found")
 			duplicate += 1
 		i += 1
-		cache = qr.data
-		time.sleep(.05)
+		# add the cache for duplicate checks if option choosen
+		if dupFlag == "y":
+			cache = qr.data
+#		time.sleep(.05)
 	print(str(duplicate) + " Duplicates found.")
 	f.close()
         Pause()
@@ -285,6 +329,8 @@ def steps(files,y,frame_array,pathIn):
 def MMcreate():
 	Banner()
 	path = raw_input("Enter Folder of QR images to compile: ")
+	if path == "":
+                return
 	path = "./" + path + "/"
 	pathIn= path
 	frame_array = []
@@ -355,17 +401,20 @@ def MMbreak():
 		if fnmatch.fnmatch(entry, pattern2):
                         print(entry)
                         count +=1
-	file = raw_input("Enter File name: ")
+	file = raw_input("Enter File name to deconstruct: ")
+	#check for empty value
+	if file == "":
+		return
 	vidcap = cv2.VideoCapture(file)
 	def getFrame(sec):
 	    vidcap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
 	    hasFrames,image = vidcap.read()
 	    if hasFrames:
-	        cv2.imwrite(str(count)+".png", image)     # save frame as JPG file
+	        cv2.imwrite(str(count)+".tiff", image)     # save frame as JPG file
 	    return hasFrames
 	sec = 0
-	frameRate = 0.5 #//it will capture image in each 0.5 second
-	count=1
+	frameRate = .5 #//it will capture image in each 0.5 second
+	count=0
 	success = getFrame(sec)
 	while success:
 	    count = count + 1
@@ -376,6 +425,40 @@ def MMbreak():
 	print("Video Deconstructed!")
 	Pause()
 	return
+
+
+#convert reassembled hex file to orginal file type
+def Hex2Bi():
+	Banner()
+	print("----------Working Directory Files ")
+        #list files in working directory
+        print("Files: ")
+        listOfFiles = os.listdir('.')
+        pattern = "*.txt"
+        for entry in listOfFiles:
+                if fnmatch.fnmatch(entry, pattern):
+                        print(entry)
+	fileName = raw_input("Enter file you wish to restore: ")
+	if fileName == "":
+		return
+	#OPen file
+	with open(fileName, 'rb') as f:
+                content = f.read()
+        print("HEX data: " + content)
+        binary_string = binascii.unhexlify(content)
+	exten = raw_input("Enter file type: ")
+	new = raw_input("Enter name for restored file: ")
+
+	newFile = open(new, 'a')
+	newFile.write(binary_string)
+	newFile.close
+#	print(binary_string)
+	new_filename = Path(new).stem + exten
+#	base = os.path.splitext(newFile)[0]
+#	os.rename(newFile, base + exten)
+	Pause()
+	return
+
 
 ########################################################3
 #Home Menu
@@ -396,7 +479,8 @@ def Home():
 	print("5. Assemble video bank from QR bank  ")
 	print("6. Assemble full video from video bank")
 	print("7. Deconstruct video into QR bank")
-        print("8. Quit")
+        print("8. Restore file")
+	print("9. Quit")
         choice = raw_input("Enter Choice: ")
         if choice:
                 if choice == '1':
@@ -415,6 +499,10 @@ def Home():
                 if choice == '7':
                         MMbreak()
                 if choice == '8':
+                        Hex2Bi()
+	        if choice == '9':
+                        Zip()
+                if choice == 'q':
 			Banner()
                         quit()
 	else:
